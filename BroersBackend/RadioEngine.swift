@@ -412,6 +412,9 @@ final class RadioEngine: NSObject {
         let s: [String: Any] = ["on": on, "muted": muted, "talking": talking, "you": you, "status": status,
                                 "callkit": useCallKit, "peers": list, "native": true]
         guard let d = try? JSONSerialization.data(withJSONObject: s), let j = String(data: d, encoding: .utf8) else { return }
+        #if DEBUG
+        NSLog("[radio] STATE \(j)")
+        #endif
         onState?(j)
     }
 }

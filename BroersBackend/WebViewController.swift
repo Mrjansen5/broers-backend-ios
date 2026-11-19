@@ -23,7 +23,9 @@ final class WebViewController: UIViewController, WKScriptMessageHandler, WKNavig
             ucc.addUserScript(WKUserScript(source: src, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         }
         // Tell the page it is inside the iPhone app before any of its own scripts run.
-        ucc.addUserScript(WKUserScript(source: "window.BROERS_IOS_APP = '1.0.0';", injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        // navigator.standalone = true: the page treats the app as "installed" and stops showing its Add-to-Home-Screen banner.
+        let early = "window.BROERS_IOS_APP = '1.0.0'; try { Object.defineProperty(navigator, 'standalone', { get: () => true }) } catch (e) {}"
+        ucc.addUserScript(WKUserScript(source: early, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         cfg.userContentController = ucc
         cfg.applicationNameForUserAgent = "BroersBackendiOS/1.0.0"
 

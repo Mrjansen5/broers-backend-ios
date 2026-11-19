@@ -2,6 +2,11 @@ name: iOS build (simulator + unsigned device)
 on:
   push:
   workflow_dispatch:
+    inputs:
+      selftest:
+        description: Join the real Radio channel from the simulator (needs the RADIO_SELFTEST_TOKEN secret, a temporary sign-in)
+        type: boolean
+        default: false
 jobs:
   build:
     runs-on: macos-15
@@ -45,6 +50,20 @@ jobs:
           xcrun simctl io "$UDID" screenshot out/simulator-launch.png
           xcrun simctl spawn "$UDID" log show --last 2m --style compact --predicate 'process == "BroersBackend"' > out/simulator-app.log || true
           tail -50 out/simulator-app.log || true
+      - name: Radio self-test on the simulator (joins the real channel, presses the headset button twice)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.selftest }}
+        env:
+          TOKEN: ${{ secrets.RADIO_SELFTEST_TOKEN }}
+        run: |
+          UDID=$(xcrun simctl list devices booted -j | python3 -c "import json,sys;d=json.load(sys.stdin)['devices'];print(next(x['udid'] for v in d.values() for x in v))")
+          xcrun simctl terminate "$UDID" ca.snjco.broersbackend || true
+          xcrun simctl launch "$UDID" ca.snjco.broersbackend -radioSelfTestToken "$TOKEN" -radioSelfTestCallKit NO
+          sleep 75
+          xcrun simctl io "$UDID" screenshot out/simulator-radio.png
+          xcrun simctl spawn "$UDID" log show --last 3m --style compact --predicate 'process == "BroersBackend" AND eventMessage CONTAINS "[radio]"' > out/simulator-radio.log || true
+          sed -E 's/[0-9a-f]{64}/TOKEN/g' -i '' out/simulator-radio.log || true
+          cat out/simulator-radio.log | tail -80
+          xcrun simctl terminate "$UDID" ca.snjco.broersbackend || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
