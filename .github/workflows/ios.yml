@@ -1,0 +1,55 @@
+name: iOS build (simulator + unsigned device)
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tools
+        run: |
+          brew install xcodegen
+          xcodebuild -version
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Build for iOS Simulator (no signing)
+        run: |
+          set -o pipefail
+          xcodebuild -project BroersBackend.xcodeproj -scheme BroersBackend -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build/sim \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee build-sim.log | grep -E 'error:|warning:|BUILD' || true
+          test -d build/sim/Build/Products/Debug-iphonesimulator/BroersBackend.app
+      - name: Build for iPhone hardware (unsigned — to be signed later)
+        run: |
+          set -o pipefail
+          xcodebuild -project BroersBackend.xcodeproj -scheme BroersBackend -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build/dev \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build 2>&1 | tee build-device.log | grep -E 'error:|warning:|BUILD' || true
+          APP=build/dev/Build/Products/Release-iphoneos/BroersBackend.app
+          test -d "$APP"
+          mkdir -p out/Payload && cp -R "$APP" out/Payload/ && (cd out && zip -qry BroersBackend-unsigned.ipa Payload)
+          ls -la out
+      - name: Run on a simulator and take a screenshot
+        run: |
+          set -x
+          UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys;d=json.load(sys.stdin)['devices'];print(next(x['udid'] for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone')))")
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" build/sim/Build/Products/Debug-iphonesimulator/BroersBackend.app
+          xcrun simctl privacy "$UDID" grant microphone ca.snjco.broersbackend || true
+          xcrun simctl launch "$UDID" ca.snjco.broersbackend
+          sleep 30
+          mkdir -p out
+          xcrun simctl io "$UDID" screenshot out/simulator-launch.png
+          xcrun simctl spawn "$UDID" log show --last 2m --style compact --predicate 'process == "BroersBackend"' > out/simulator-app.log || true
+          tail -50 out/simulator-app.log || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: broers-backend-ios
+          path: |
+            out/
+            build-sim.log
+            build-device.log
