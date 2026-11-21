@@ -37,7 +37,7 @@
   // 2. paint
   let painting = false
   function paint () {
-    const sec = $('tRadio'); if (!sec?.dataset.made) return
+    const sec = $('tRadio')
     painting = true
     try {
       const s = N.st, others = s.peers || []
@@ -50,6 +50,8 @@
         if (m.innerHTML !== html) m.innerHTML = html
       }
       const dot = $('rDot'); if (dot) { dot.classList.toggle('on', s.on); dot.classList.toggle('mut', s.on && s.muted) }
+      // cal 1.8.0+: the radio opens from the Voice chat button in the team chat; show it lit while the native radio is on.
+      const vb = $('tcVoice'); if (vb && vb.classList.contains('live') !== !!s.on) vb.classList.toggle('live', !!s.on)
       const stat = s.status || (s.on ? (others.length ? `On the channel with ${others.length} other${others.length === 1 ? '' : 's'}.` : 'You\'re on the channel. Nobody else is on yet.') : null)
       if (stat !== null && $('rStat') && $('rStat').textContent !== stat) $('rStat').textContent = stat
       if (s.on && $('rPeople')) {
@@ -64,7 +66,7 @@
       }
       const plat = $('rPlat')
       if (plat) {
-        const html = 'iPhone app: the radio keeps going with the screen locked or while you use another app, and it shows on the lock screen as a call called <b>Broers Radio</b> — its Mute button works too. Tap <b>Leave the radio</b> here to hang up.' +
+        const html = 'iPhone app: voice chat keeps going with the screen locked or while you use another app, and it shows on the lock screen as a call called <b>Broers Radio</b> — its Mute button works too. Tap <b>Leave voice chat</b> here to hang up.' +
           `<br><button class="btn ghost" id="rMode" style="margin-top:10px;font-size:13px;padding:8px 12px">Headset button mode: ${s.callkit ? 'Call (default)' : 'Media'} — tap to switch</button>`
         if (plat.dataset.native !== html) { plat.innerHTML = html; plat.dataset.native = html }
       }

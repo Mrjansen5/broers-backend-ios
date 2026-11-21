@@ -35,7 +35,7 @@ try {
   await page.goto('https://broersbackend.snjco.ca/cal/', { waitUntil: 'networkidle' })
   const pre = await page.evaluate(async t => (await (await fetch('/api/app/radio', { headers: { Authorization: 'Bearer ' + t } })).json()).peers, tok.web)
   if (pre.length) throw new Error('real people are on the radio right now - not testing: ' + pre.map(p => p.name).join(', '))
-  await page.click('#radioTab'); await sleep(500); await page.click('#rJoin'); await sleep(3000)
+  await page.click('#chatTab'); await page.click('#tcVoice'); await sleep(500); await page.click('#rJoin'); await sleep(3000)
   log('web peer on:', JSON.stringify(await page.evaluate(() => window.BBRadio.state().on)))
   await gh('/actions/workflows/ios.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main', inputs: { selftest: true } }) })
   log('workflow dispatched')
